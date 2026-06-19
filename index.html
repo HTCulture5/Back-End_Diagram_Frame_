@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backend Flow Studio — High Trend Culture</title>
+<style>
+  :root{
+    --bg:#070b14;
+    --bg2:#0c1322;
+    --panel:#0f1828;
+    --panel2:#131f33;
+    --edge:#1d2c45;
+    --ink:#e8eefc;
+    --ink2:#9fb2d4;
+    --ink3:#6b7fa3;
+    --cyan:#27e6ff;
+    --cyan-dim:#0bb6d6;
+    --violet:#8b7bff;
+    --magenta:#ff44db;
+    --magenta2:#ff00ff;
+    --amber:#ffb547;
+    --green:#3ff5a5;
+    --pink:#ff5cc8;
+    --red:#ff5d6c;
+    --radius:14px;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code','Roboto Mono',Menlo,Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:
+    radial-gradient(1200px 700px at 15% -10%, #0e1b33 0%, transparent 55%),
+    radial-gradient(1000px 600px at 100% 0%, #16122e 0%, transparent 50%),
+    var(--bg);
+    color:var(--ink);font-family:var(--sans);min-height:100%;
+    -webkit-font-smoothing:antialiased;}
+  body{padding:0 0 80px;overflow-x:hidden}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;
+    padding:14px 26px;background:rgba(8,12,20,.82);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--edge)}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.5px}
+  .brand .dot{width:11px;height:11px;border-radius:50%;
+    background:var(--cyan);box-shadow:0 0 14px var(--cyan),0 0 4px #fff inset}
+  .brand small{display:block;font-weight:400;color:var(--ink3);font-size:11px;letter-spacing:2px;text-transform:uppercase}
+  .topbar .spacer{flex:1}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--edge);border-radius:10px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--ink2);font-family:var(--sans);
+    font-size:13px;padding:9px 16px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:7px}
+  .seg button.active{background:linear-gradient(180deg,var(--cyan),var(--cyan-dim));color:#001a20;font-weight:600;
+    box-shadow:0 0 18px rgba(39,230,255,.35)}
+  .seg button:not(.active):hover{color:var(--ink);background:var(--panel2)}
+  .btn{background:var(--panel);border:1px solid var(--edge);color:var(--ink);
+    font-family:var(--sans);font-size:13px;padding:9px 15px;border-radius:10px;cursor:pointer;
+    transition:.18s;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(39,230,255,.25);color:#fff}
+  .btn.primary{background:linear-gradient(180deg,var(--violet),#5b4bd6);border-color:transparent;
+    box-shadow:0 0 18px rgba(139,123,255,.4)}
+  .btn.ghost{background:transparent}
+
+  /* ---------- intro ---------- */
+  .intro{padding:30px 26px 6px;max-width:1280px;margin:0 auto}
+  .intro h1{font-size:26px;font-weight:700;letter-spacing:.3px;
+    background:linear-gradient(90deg,#fff,var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .intro p{color:var(--ink2);font-size:14.5px;margin-top:8px;max-width:860px;line-height:1.6}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px}
+  .legend span{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink3)}
+  .legend i{width:22px;height:8px;border-radius:4px;display:inline-block}
+
+  /* ---------- canvas ---------- */
+  .canvas{max-width:1280px;margin:18px auto 0;padding:0 26px;position:relative}
+  .flow{display:flex;flex-direction:column;gap:30px;position:relative;z-index:2}
+
+  .layer{position:relative;border-radius:var(--radius);background:
+    linear-gradient(180deg,var(--panel) 0%,var(--bg2) 100%);
+    border:1px solid var(--edge);padding:2px;transition:.25s}
+  .layer.open{box-shadow:0 0 0 1px rgba(39,230,255,.25)}
+  /* circulating light border */
+  .layer::before{content:"";position:absolute;inset:0;border-radius:var(--radius);padding:1.5px;
+    background:conic-gradient(from var(--ang,0deg),
+      transparent 0deg, transparent 60deg,
+      var(--gl,#27e6ff) 110deg, #fff 130deg, var(--gl,#27e6ff) 150deg,
+      transparent 210deg, transparent 360deg);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    opacity:.0;transition:opacity .4s;pointer-events:none}
+  .layer.live::before{opacity:.9;animation:spin var(--spd,5s) linear infinite}
+  @keyframes spin{to{--ang:360deg}}
+  @property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+
+  .layer-head{display:flex;align-items:center;gap:16px;padding:18px 20px;cursor:pointer;
+    border-radius:13px;position:relative;z-index:1}
+  .layer-head .idx{width:42px;height:42px;flex:none;border-radius:11px;display:grid;place-items:center;
+    font-family:var(--mono);font-size:15px;font-weight:600;color:#00121a;
+    background:linear-gradient(135deg,var(--gl,#27e6ff),#fff);box-shadow:0 0 16px var(--gl,#27e6ff)}
+  .layer-head .meta{flex:1;min-width:0}
+  .layer-head .meta h3{font-size:16.5px;font-weight:600;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+  .layer-head .meta p{color:var(--ink2);font-size:12.5px;margin-top:3px}
+  .tools-mini{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:300px}
+  .chip{font-size:10.5px;font-family:var(--mono);padding:4px 9px;border-radius:20px;
+    border:1px solid var(--edge);color:var(--ink2);background:rgba(255,255,255,.02);white-space:nowrap}
+  .chip.gcp{border-color:rgba(39,230,255,.4);color:var(--cyan)}
+  .chip.fb{border-color:rgba(255,181,71,.45);color:var(--amber)}
+  .chip.ai{border-color:rgba(139,123,255,.5);color:var(--violet)}
+  .caret{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid var(--edge);
+    display:grid;place-items:center;color:var(--ink2);transition:.25s;font-size:15px}
+  .layer.open .caret{transform:rotate(180deg);color:var(--cyan);border-color:var(--cyan)}
+
+  /* sublayers */
+  .subwrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s ease;}
+  .layer.open .subwrap{grid-template-rows:1fr}
+  .subinner{overflow:hidden}
+  .subgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:13px;
+    padding:6px 18px 20px}
+  .sub{background:var(--panel2);border:1px solid var(--edge);border-radius:11px;padding:14px 15px;
+    position:relative;overflow:hidden;transition:.2s}
+  .sub:hover{border-color:var(--gl,#27e6ff);transform:translateY(-2px)}
+  .sub::after{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:var(--gl,#27e6ff);
+    box-shadow:0 0 12px var(--gl,#27e6ff)}
+  .sub h4{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .sub h4 .ti{font-size:16px;color:var(--gl,#27e6ff)}
+  .sub p{font-size:12px;color:var(--ink2);line-height:1.55}
+  .sub .stack{margin-top:10px;display:flex;flex-wrap:wrap;gap:5px}
+  .sub .stack span{font-size:10px;font-family:var(--mono);padding:3px 7px;border-radius:6px;
+    background:rgba(255,255,255,.03);border:1px solid var(--edge);color:var(--ink2)}
+  .sub .sync{margin-top:10px;font-size:11px;color:var(--ink3);display:flex;gap:7px;align-items:flex-start;line-height:1.5}
+  .sub .sync .ti{color:var(--green);font-size:14px;flex:none;margin-top:1px}
+
+  /* connectors between layers */
+  .connector{height:30px;margin:-30px 0;display:grid;place-items:center;position:relative;z-index:1;pointer-events:none}
+  .connector .pipe{width:2px;height:30px;background:linear-gradient(var(--cyan),transparent);position:relative;overflow:visible}
+  .connector .pkt{position:absolute;left:-3px;width:8px;height:8px;border-radius:50%;
+    background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:drop 2.2s linear infinite}
+  @keyframes drop{0%{top:-4px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:30px;opacity:0}}
+
+  /* builder panel */
+  .builder{max-width:1280px;margin:0 auto;padding:0 26px}
+  .builder-card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--radius);padding:22px;margin-top:10px}
+  .builder-card h2{font-size:17px;margin-bottom:4px}
+  .builder-card .hint{color:var(--ink3);font-size:12.5px;margin-bottom:16px}
+  .frow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .field{flex:1;min-width:200px}
+  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;background:var(--bg2);border:1px solid var(--edge);
+    color:var(--ink);border-radius:9px;padding:10px 12px;font-family:var(--sans);font-size:13px;transition:.18s}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:0;border-color:var(--cyan);
+    box-shadow:0 0 0 3px rgba(39,230,255,.15)}
+  .field textarea{resize:vertical;min-height:46px}
+  .swatches{display:flex;gap:8px}
+  .sw{width:26px;height:26px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:.15s}
+  .sw.sel{border-color:#fff;transform:scale(1.12)}
+  .templates{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .tpl{font-size:12px;padding:8px 14px;border-radius:20px;border:1px dashed var(--edge);color:var(--ink2);
+    cursor:pointer;transition:.18s;background:transparent}
+  .tpl:hover{border-color:var(--violet);color:#fff;border-style:solid}
+
+  .empty{padding:40px;text-align:center;color:var(--ink3);font-size:13px;border:1px dashed var(--edge);border-radius:var(--radius)}
+
+  footer{max-width:1280px;margin:40px auto 0;padding:18px 26px;color:var(--ink3);font-size:11.5px;
+    border-top:1px solid var(--edge);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .hidden{display:none!important}
+  @media (prefers-reduced-motion:reduce){.layer.live::before{animation:none}.connector .pkt{animation:none}}
+</style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.31.0/tabler-icons.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span>
+    <div>BACKEND FLOW STUDIO<small>High Trend Culture · GCP × Firebase × AI Studio</small></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="seg" id="modeSeg">
+    <button class="active" data-mode="diagram"><i class="ti ti-sitemap"></i>Architecture</button>
+    <button data-mode="builder"><i class="ti ti-wand"></i>Builder</button>
+  </div>
+  <button class="btn" id="pulseBtn"><i class="ti ti-bolt"></i>Energize edges</button>
+  <button class="btn ghost" id="expandBtn"><i class="ti ti-arrows-maximize"></i>Expand all</button>
+</div>
+
+<!-- ===================== DIAGRAM MODE ===================== -->
+<section id="diagramMode">
+  <div class="intro">
+    <h1>Backend architecture — form intake, quiz engine, relational core, CRM &amp; monitoring</h1>
+    <p>Each principal layer is a stage in the request lifecycle for hightrendculture.com. Click any layer to expand its
+       sublayers — the discrete functions, the exact GCP / Firebase / Google AI Studio tool that powers it, and the
+       instruction to merge &amp; synchronize it with the rest of the flow. Edges circulate light when a layer is live.</p>
+    <div class="legend">
+      <span><i style="background:var(--cyan)"></i>Google Cloud Platform</span>
+      <span><i style="background:var(--amber)"></i>Firebase</span>
+      <span><i style="background:var(--violet)"></i>Google AI Studio / Gemini</span>
+      <span><i style="background:var(--green)"></i>Sync contract</span>
+    </div>
+  </div>
+  <div class="canvas"><div class="flow" id="flow"></div></div>
+</section>
+
+<!-- ===================== BUILDER MODE ===================== -->
+<section id="builderMode" class="builder hidden">
+  <div class="intro" style="padding-left:0;padding-right:0">
+    <h1>Architecture builder</h1>
+    <p>Compose a backend template for any site. Add principal layers, attach sublayer functions, pick the cloud tool
+       and the sync contract for each. Switch back to Architecture view to see your template render with live circulating edges.</p>
+  </div>
+
+  <div class="builder-card">
+    <h2>Start from a template</h2>
+    <div class="hint">Load a proven shape, then customize — or build from scratch below.</div>
+    <div class="templates" id="tplRow">
+      <button class="tpl" data-tpl="saas">SaaS app</button>
+      <button class="tpl" data-tpl="ecom">E-commerce</button>
+      <button class="tpl" data-tpl="content">Content / blog</button>
+      <button class="tpl" data-tpl="quiz">Quiz / lead-gen</button>
+      <button class="tpl" data-tpl="clear">Clear all</button>
+    </div>
+  </div>
+
+  <div class="builder-card">
+    <h2>Add a principal layer</h2>
+    <div class="hint">A principal layer is one stage in your flow (e.g. “Ingestion”, “Auth”, “Data store”).</div>
+    <div class="frow">
+      <div class="field"><label>Layer name</label><input id="bName" placeholder="e.g. Payment processing"></div>
+      <div class="field"><label>One-line role</label><input id="bRole" placeholder="e.g. Charge cards, handle webhooks"></div>
+    </div>
+    <div class="frow">
+      <div class="field" style="flex:none"><label>Edge color</label>
+        <div class="swatches" id="bSw">
+          <span class="sw sel" data-c="#27e6ff" style="background:#27e6ff"></span>
+          <span class="sw" data-c="#8b7bff" style="background:#8b7bff"></span>
+          <span class="sw" data-c="#ffb547" style="background:#ffb547"></span>
+          <span class="sw" data-c="#3ff5a5" style="background:#3ff5a5"></span>
+          <span class="sw" data-c="#ff5cc8" style="background:#ff5cc8"></span>
+          <span class="sw" data-c="#ff5d6c" style="background:#ff5d6c"></span>
+        </div>
+      </div>
+      <div class="field"><label>Primary tool</label>
+        <select id="bTool">
+          <optgroup label="Google Cloud Platform">
+            <option>Cloud Run</option><option>Cloud Functions</option><option>API Gateway</option>
+            <option>Cloud SQL (PostgreSQL)</option><option>BigQuery</option><option>Pub/Sub</option>
+            <option>Cloud Load Balancing</option><option>Cloud Armor</option><option>Cloud Monitoring</option>
+            <option>Cloud Logging</option><option>Secret Manager</option><option>Memorystore (Redis)</option>
+          </optgroup>
+          <optgroup label="Firebase">
+            <option>Firebase Auth</option><option>Firestore</option><option>Firebase Hosting</option>
+            <option>Cloud Functions for Firebase</option><option>Firebase Realtime DB</option>
+            <option>Firebase App Check</option><option>Remote Config</option>
+          </optgroup>
+          <optgroup label="Google AI Studio">
+            <option>Gemini API</option><option>Gemini (structured output)</option>
+            <option>Vertex AI</option><option>Embeddings API</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Sublayer functions (one per line — format: Name :: description)</label>
+        <textarea id="bSubs" placeholder="Validation :: sanitize and schema-check input&#10;Rate limit :: block abusive submitters"></textarea></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Sync contract (how it merges with the next layer)</label>
+        <input id="bSync" placeholder="e.g. Emits validated payload to Pub/Sub topic forms.intake"></div>
+    </div>
+    <button class="btn primary" id="addLayer"><i class="ti ti-plus"></i>Add layer to template</button>
+  </div>
+
+  <div class="builder-card">
+    <h2>Your template <span style="color:var(--ink3);font-weight:400;font-size:13px">(<span id="cnt">0</span> layers)</span></h2>
+    <div class="hint">Reorder or remove, then hit “Architecture” in the top bar to view it live.</div>
+    <div id="buildList"></div>
+  </div>
+</section>
+
+<footer>
+  <span>Backend Flow Studio — reusable template. Click layers to drill into sublayers · tools · sync contracts.</span>
+  <span id="ts"></span>
+</footer>
+
+<script>
+/* ----------------------------------------------------------
+   DATA MODEL — the High Trend Culture backend, by layer
+   tool tag: 'gcp' | 'fb' | 'ai'   color: edge light
+----------------------------------------------------------- */
+const HTC = [
+  {
+    name:"Edge & delivery", role:"Entry point — serve the site, terminate TLS, shield traffic",
+    color:"#27e6ff", spd:"5s",
+    chips:[["fb","Firebase Hosting"],["gcp","Cloud Load Balancing"],["gcp","Cloud Armor"]],
+    subs:[
+      {icon:"ti-world",title:"CDN & static hosting",desc:"Serves the single-page site + assets from global edge nodes with auto SSL.",
+       stack:["Firebase Hosting","Fastly edge cache"],sync:"Rewrites /api/** to Cloud Run; everything else served from CDN cache."},
+      {icon:"ti-shield-lock",title:"WAF & DDoS",desc:"Filters malicious traffic and bots before they ever reach compute.",
+       stack:["Cloud Armor","reCAPTCHA Enterprise"],sync:"Attaches as a backend-service policy on the HTTPS load balancer."},
+      {icon:"ti-route",title:"Routing & TLS",desc:"Global anycast IP, HTTP→HTTPS redirect, path-based routing to services.",
+       stack:["Cloud Load Balancing","Managed certs"],sync:"Routes by path: forms, quiz, and CRM each map to a Cloud Run service."},
+    ]
+  },
+  {
+    name:"Form & quiz intake", role:"Capture form submissions and quiz answers from the client",
+    color:"#3ff5a5", spd:"4.4s",
+    chips:[["fb","App Check"],["gcp","API Gateway"],["gcp","Cloud Run"]],
+    subs:[
+      {icon:"ti-forms",title:"Form receiver",desc:"Stateless endpoint accepting contact/lead form POSTs as JSON.",
+       stack:["Cloud Run","Express/Fastify"],sync:"Validates origin via App Check token, then writes to the intake queue."},
+      {icon:"ti-list-check",title:"Quiz session API",desc:"Issues quiz questions, accepts answers, tracks per-session progress.",
+       stack:["Cloud Run","Memorystore (Redis)"],sync:"Keeps live session state in Redis keyed by sessionId; flushes to SQL on completion."},
+      {icon:"ti-shield-check",title:"Validation & rate limit",desc:"Schema-checks payloads, strips XSS, throttles abusive IPs.",
+       stack:["Zod / JSON Schema","API Gateway quotas"],sync:"Rejects bad input early; emits clean events to Pub/Sub topic intake.events."},
+      {icon:"ti-key",title:"Secrets & config",desc:"Pulls API keys and DB creds at runtime; no secrets in code.",
+       stack:["Secret Manager","Remote Config"],sync:"Injected as env vars at Cloud Run cold start via Secret Manager refs."},
+    ]
+  },
+  {
+    name:"Async processing", role:"Decouple intake from heavy work with a durable event bus",
+    color:"#ffb547", spd:"4.8s",
+    chips:[["gcp","Pub/Sub"],["fb","Cloud Functions"],["gcp","Cloud Tasks"]],
+    subs:[
+      {icon:"ti-arrows-shuffle",title:"Event bus",desc:"Fan-out of intake events to scoring, CRM, and analytics consumers.",
+       stack:["Pub/Sub topics","Dead-letter queue"],sync:"One topic, many subscriptions — each downstream layer owns its own subscription."},
+      {icon:"ti-bolt",title:"Triggered functions",desc:"Lightweight workers react to each event (enrich, transform, notify).",
+       stack:["Cloud Functions for Firebase"],sync:"Idempotent handlers keyed by messageId to survive Pub/Sub re-delivery."},
+      {icon:"ti-clock-play",title:"Scheduled & deferred",desc:"Retries, follow-up emails, nightly rollups run on a timer.",
+       stack:["Cloud Tasks","Cloud Scheduler"],sync:"Enqueues delayed tasks; backs off exponentially on downstream failure."},
+    ]
+  },
+  {
+    name:"AI quiz scoring", role:"Score quizzes and personalize results with Gemini",
+    color:"#8b7bff", spd:"4s",
+    chips:[["ai","Gemini API"],["ai","Structured output"],["ai","Embeddings"]],
+    subs:[
+      {icon:"ti-brain",title:"Result generation",desc:"Turns raw quiz answers into a personalized profile + recommendation.",
+       stack:["Gemini API","Google AI Studio prompt"],sync:"Prompt + answers in, strict JSON out — validated before persistence."},
+      {icon:"ti-braces",title:"Structured output",desc:"Forces Gemini to return a fixed schema so results map cleanly to columns.",
+       stack:["responseSchema","JSON mode"],sync:"Schema mirrors the quiz_results table; a mismatch fails the message to DLQ."},
+      {icon:"ti-vector-triangle",title:"Lead embeddings",desc:"Embeds responses to cluster leads and power similarity lookups.",
+       stack:["Embeddings API","pgvector"],sync:"Vector written alongside the row in Cloud SQL for nearest-neighbor scoring."},
+      {icon:"ti-flask",title:"Prompt versioning",desc:"Tested prompts promoted from AI Studio into production safely.",
+       stack:["AI Studio","Remote Config flag"],sync:"Prompt id stored per result for full reproducibility and A/B testing."},
+    ]
+  },
+  {
+    name:"Relational data core", role:"System of record — normalized tables for forms, quizzes, contacts",
+    color:"#27e6ff", spd:"5.4s",
+    chips:[["gcp","Cloud SQL (PostgreSQL)"],["fb","Firestore"],["gcp","Memorystore"]],
+    subs:[
+      {icon:"ti-database",title:"PostgreSQL schema",desc:"Core relational tables: contacts, submissions, quizzes, quiz_results, events.",
+       stack:["Cloud SQL","pgvector ext"],sync:"FK from quiz_results→contacts; events table is append-only audit trail."},
+      {icon:"ti-bolt",title:"Realtime mirror",desc:"Hot, denormalized copy for instant UI reads on dashboards.",
+       stack:["Firestore"],sync:"CDC: a function streams committed SQL rows into Firestore docs within ~1s."},
+      {icon:"ti-traffic-cone",title:"Cache layer",desc:"Caches quiz definitions and hot lookups to cut DB load.",
+       stack:["Memorystore (Redis)"],sync:"Write-through cache; invalidated by the same event that updates SQL."},
+      {icon:"ti-git-branch",title:"Migrations",desc:"Versioned, reversible schema changes shipped with the app.",
+       stack:["Prisma / Flyway"],sync:"Runs as a pre-deploy Cloud Build step; blocks rollout on failure."},
+    ]
+  },
+  {
+    name:"CRM & lifecycle", role:"Turn submissions into managed contacts and trigger outreach",
+    color:"#ff5cc8", spd:"4.6s",
+    chips:[["gcp","Cloud Run"],["fb","Firestore"],["gcp","Pub/Sub"]],
+    subs:[
+      {icon:"ti-users",title:"Contact sync",desc:"Upserts every form/quiz lead into the CRM contact model.",
+       stack:["Cloud Run service","HubSpot/Salesforce API"],sync:"Dedupes on email; merges quiz score + source into the contact record."},
+      {icon:"ti-mail-forward",title:"Lifecycle automation",desc:"Fires welcome, nurture, and re-engagement sequences by stage.",
+       stack:["Cloud Functions","SendGrid"],sync:"Subscribes to intake.events; stage transitions emit new events back to the bus."},
+      {icon:"ti-chart-funnel",title:"Pipeline state",desc:"Tracks lead → MQL → SQL → customer with timestamps.",
+       stack:["Cloud SQL","Firestore mirror"],sync:"State machine; every transition is written to the events audit table."},
+      {icon:"ti-plug-connected",title:"Outbound webhooks",desc:"Pushes updates to external tools (Slack, ad platforms).",
+       stack:["Cloud Tasks","Signed webhooks"],sync:"Retried via Cloud Tasks with HMAC signature for tamper-proof delivery."},
+    ]
+  },
+  {
+    name:"Observability & ops", role:"See, alert on, and trace everything across the flow",
+    color:"#ff5d6c", spd:"5s",
+    chips:[["gcp","Cloud Monitoring"],["gcp","Cloud Logging"],["gcp","Cloud Trace"]],
+    subs:[
+      {icon:"ti-activity",title:"Metrics & dashboards",desc:"Latency, error rate, queue depth, quiz completions, lead volume.",
+       stack:["Cloud Monitoring","Managed Prometheus"],sync:"Every service exports OpenTelemetry metrics to one workspace."},
+      {icon:"ti-bell-ringing",title:"Alerting & SLOs",desc:"Pages on burn-rate breaches and dead-letter growth.",
+       stack:["Alerting policies","PagerDuty"],sync:"DLQ depth > 0 and p95 latency SLOs wired to on-call escalation."},
+      {icon:"ti-list-search",title:"Structured logs",desc:"Correlated, queryable logs keyed by request + session id.",
+       stack:["Cloud Logging","Log-based metrics"],sync:"Trace id propagated from edge → DB so one request is followable end-to-end."},
+      {icon:"ti-timeline",title:"Distributed tracing",desc:"Spans across Run, Functions, Pub/Sub, SQL and Gemini calls.",
+       stack:["Cloud Trace","OpenTelemetry"],sync:"Context propagated through Pub/Sub message attributes to keep traces intact."},
+    ]
+  },
+];
+
+/* ---------- render diagram ---------- */
+const flow = document.getElementById('flow');
+let liveMode = true;
+
+function chipHTML(c){const cls=c[0];return `<span class="chip ${cls}">${c[1]}</span>`}
+function renderFlow(layers){
+  flow.innerHTML='';
+  if(!layers.length){flow.innerHTML='<div class="empty">No layers yet. Switch to Builder to compose a template.</div>';return}
+  layers.forEach((L,i)=>{
+    const el=document.createElement('div');
+    el.className='layer'+(liveMode?' live':'');
+    el.style.setProperty('--gl',L.color);
+    el.style.setProperty('--spd',L.spd||'5s');
+    el.innerHTML=`
+      <div class="layer-head" onclick="this.parentNode.classList.toggle('open')">
+        <div class="idx">${String(i+1).padStart(2,'0')}</div>
+        <div class="meta">
+          <h3>${L.name}</h3>
+          <p>${L.role}</p>
+        </div>
+        <div class="tools-mini">${(L.chips||[]).map(chipHTML).join('')}</div>
+        <div class="caret"><i class="ti ti-chevron-down"></i></div>
+      </div>
+      <div class="subwrap"><div class="subinner"><div class="subgrid">
+        ${L.subs.map(s=>`
+          <div class="sub">
+            <h4><i class="ti ${s.icon}"></i>${s.title}</h4>
+            <p>${s.desc}</p>
+            <div class="stack">${(s.stack||[]).map(t=>`<span>${t}</span>`).join('')}</div>
+            <div class="sync"><i class="ti ti-arrows-transfer-up"></i><span>${s.sync}</span></div>
+          </div>`).join('')}
+      </div></div></div>`;
+    flow.appendChild(el);
+    if(i<layers.length-1){
+      const c=document.createElement('div');c.className='connector';
+      c.innerHTML='<div class="pipe"><div class="pkt"></div></div>';
+      c.querySelector('.pipe').style.background=`linear-gradient(${L.color},transparent)`;
+      c.querySelector('.pkt').style.background=L.color;
+      c.querySelector('.pkt').style.boxShadow=`0 0 12px ${L.color}`;
+      flow.appendChild(c);
+    }
+  });
+}
+renderFlow(HTC);
+
+/* ---------- top bar controls ---------- */
+document.getElementById('pulseBtn').addEventListener('click',()=>{
+  liveMode=!liveMode;
+  document.querySelectorAll('.layer').forEach(l=>l.classList.toggle('live',liveMode));
+  document.getElementById('pulseBtn').innerHTML=liveMode
+    ?'<i class="ti ti-bolt"></i>Energize edges':'<i class="ti ti-bolt-off"></i>Edges paused';
+});
+let allOpen=false;
+document.getElementById('expandBtn').addEventListener('click',()=>{
+  allOpen=!allOpen;
+  document.querySelectorAll('.layer').forEach(l=>l.classList.toggle('open',allOpen));
+  document.getElementById('expandBtn').innerHTML=allOpen
+    ?'<i class="ti ti-arrows-minimize"></i>Collapse all':'<i class="ti ti-arrows-maximize"></i>Expand all';
+});
+
+/* ---------- mode switch ---------- */
+document.querySelectorAll('#modeSeg button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#modeSeg button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const m=b.dataset.mode;
+    document.getElementById('diagramMode').classList.toggle('hidden',m!=='diagram');
+    document.getElementById('builderMode').classList.toggle('hidden',m!=='builder');
+    if(m==='diagram') renderFlow(currentLayers());
+  });
+});
+
+/* ===================== BUILDER ===================== */
+let custom=[]; let pickColor="#27e6ff";
+const toolTag=t=>{
+  const ai=['Gemini','Vertex','Embeddings'];const fb=['Firebase','Firestore','Remote Config'];
+  if(ai.some(x=>t.includes(x)))return'ai';if(fb.some(x=>t.includes(x)))return'fb';return'gcp';
+};
+function currentLayers(){return custom.length?custom:HTC}
+
+document.querySelectorAll('#bSw .sw').forEach(s=>{
+  s.addEventListener('click',()=>{
+    document.querySelectorAll('#bSw .sw').forEach(x=>x.classList.remove('sel'));
+    s.classList.add('sel');pickColor=s.dataset.c;
+  });
+});
+
+document.getElementById('addLayer').addEventListener('click',()=>{
+  const name=document.getElementById('bName').value.trim();
+  if(!name){document.getElementById('bName').focus();return}
+  const role=document.getElementById('bRole').value.trim()||'—';
+  const tool=document.getElementById('bTool').value;
+  const sync=document.getElementById('bSync').value.trim()||'Define how this layer hands off to the next.';
+  const subsRaw=document.getElementById('bSubs').value.trim();
+  const subs=subsRaw?subsRaw.split('\n').filter(Boolean).map(line=>{
+    const [n,...d]=line.split('::');
+    return{icon:'ti-point',title:(n||'Function').trim(),desc:(d.join('::')||'').trim()||'—',
+      stack:[tool],sync:sync};
+  }):[{icon:'ti-point',title:'Primary function',desc:role,stack:[tool],sync:sync}];
+  custom.push({name,role,color:pickColor,spd:'4.6s',
+    chips:[[toolTag(tool),tool]],subs});
+  document.getElementById('bName').value='';document.getElementById('bRole').value='';
+  document.getElementById('bSubs').value='';document.getElementById('bSync').value='';
+  renderBuildList();
+});
+
+function renderBuildList(){
+  const wrap=document.getElementById('buildList');
+  document.getElementById('cnt').textContent=custom.length;
+  if(!custom.length){wrap.innerHTML='<div class="empty">No custom layers yet — add one above or load a template.</div>';return}
+  wrap.innerHTML=custom.map((L,i)=>`
+    <div class="sub" style="margin-bottom:10px;--gl:${L.color}">
+      <h4 style="justify-content:space-between">
+        <span><i class="ti ti-stack-2"></i>${i+1}. ${L.name}</span>
+        <span style="display:flex;gap:6px">
+          <button class="btn ghost" style="padding:4px 8px" onclick="moveLayer(${i},-1)"><i class="ti ti-arrow-up"></i></button>
+          <button class="btn ghost" style="padding:4px 8px" onclick="moveLayer(${i},1)"><i class="ti ti-arrow-down"></i></button>
+          <button class="btn ghost" style="padding:4px 8px;color:var(--red)" onclick="delLayer(${i})"><i class="ti ti-trash"></i></button>
+        </span>
+      </h4>
+      <p>${L.role}</p>
+      <div class="stack">${L.subs.map(s=>`<span>${s.title}</span>`).join('')}</div>
+    </div>`).join('');
+}
+window.moveLayer=(i,d)=>{const j=i+d;if(j<0||j>=custom.length)return;
+  [custom[i],custom[j]]=[custom[j],custom[i]];renderBuildList()};
+window.delLayer=i=>{custom.splice(i,1);renderBuildList()};
+
+/* ---------- templates ---------- */
+const TPL={
+  saas:[
+    {name:"API gateway",role:"Auth, routing, rate limiting",color:"#27e6ff",spd:"5s",
+     chips:[["gcp","API Gateway"]],subs:[{icon:"ti-key",title:"Auth",desc:"Verify Firebase Auth tokens.",stack:["Firebase Auth"],sync:"Passes uid downstream in a signed header."}]},
+    {name:"App services",role:"Core business logic on Cloud Run",color:"#3ff5a5",spd:"4.5s",
+     chips:[["gcp","Cloud Run"]],subs:[{icon:"ti-server",title:"Service mesh",desc:"Stateless containers per domain.",stack:["Cloud Run"],sync:"Communicates via Pub/Sub + internal REST."}]},
+    {name:"Data store",role:"Relational + realtime",color:"#8b7bff",spd:"5.2s",
+     chips:[["gcp","Cloud SQL (PostgreSQL)"]],subs:[{icon:"ti-database",title:"Postgres",desc:"Normalized source of truth.",stack:["Cloud SQL"],sync:"CDC mirror into Firestore for live reads."}]},
+    {name:"Observability",role:"Metrics, logs, traces",color:"#ff5d6c",spd:"5s",
+     chips:[["gcp","Cloud Monitoring"]],subs:[{icon:"ti-activity",title:"Telemetry",desc:"OTel across all services.",stack:["Cloud Monitoring"],sync:"Single workspace; SLO alerts to on-call."}]},
+  ],
+  ecom:[
+    {name:"Storefront edge",role:"CDN + hosting",color:"#27e6ff",spd:"5s",chips:[["fb","Firebase Hosting"]],
+     subs:[{icon:"ti-world",title:"CDN",desc:"Cached product pages.",stack:["Firebase Hosting"],sync:"Rewrites /api to Cloud Run."}]},
+    {name:"Cart & checkout",role:"Sessions and payment",color:"#3ff5a5",spd:"4.4s",chips:[["gcp","Cloud Run"]],
+     subs:[{icon:"ti-shopping-cart",title:"Cart",desc:"Session state in Redis.",stack:["Memorystore"],sync:"Flushes order to SQL on purchase."}]},
+    {name:"Payments",role:"Charge + webhooks",color:"#ffb547",spd:"4.6s",chips:[["gcp","Cloud Functions"]],
+     subs:[{icon:"ti-credit-card",title:"Processor",desc:"Stripe charge + webhook intake.",stack:["Cloud Functions"],sync:"Idempotent on event id; emits order.paid."}]},
+    {name:"Catalog DB",role:"Products + orders",color:"#8b7bff",spd:"5.2s",chips:[["gcp","Cloud SQL (PostgreSQL)"]],
+     subs:[{icon:"ti-database",title:"Postgres",desc:"Inventory + orders.",stack:["Cloud SQL"],sync:"Decrements stock in the same tx as order insert."}]},
+    {name:"Monitoring",role:"Ops + alerts",color:"#ff5d6c",spd:"5s",chips:[["gcp","Cloud Monitoring"]],
+     subs:[{icon:"ti-activity",title:"Dashboards",desc:"Revenue, errors, latency.",stack:["Cloud Monitoring"],sync:"Alerts on failed-payment spike."}]},
+  ],
+  content:[
+    {name:"Edge delivery",role:"Static + CDN",color:"#27e6ff",spd:"5s",chips:[["fb","Firebase Hosting"]],
+     subs:[{icon:"ti-world",title:"Hosting",desc:"SSG pages at the edge.",stack:["Firebase Hosting"],sync:"ISR revalidation via Cloud Functions."}]},
+    {name:"Content API",role:"Headless CMS",color:"#3ff5a5",spd:"4.5s",chips:[["gcp","Cloud Run"]],
+     subs:[{icon:"ti-article",title:"CMS",desc:"Serves structured content.",stack:["Cloud Run"],sync:"Cache-busts CDN on publish event."}]},
+    {name:"Content store",role:"Docs + media",color:"#8b7bff",spd:"5.2s",chips:[["fb","Firestore"]],
+     subs:[{icon:"ti-database",title:"Firestore",desc:"Posts + metadata.",stack:["Firestore"],sync:"Publish writes emit to Pub/Sub for indexing."}]},
+    {name:"Monitoring",role:"Traffic + health",color:"#ff5d6c",spd:"5s",chips:[["gcp","Cloud Monitoring"]],
+     subs:[{icon:"ti-activity",title:"Analytics",desc:"Pageviews + uptime.",stack:["Cloud Monitoring"],sync:"Uptime checks page on outage."}]},
+  ],
+  quiz:[
+    {name:"Quiz intake",role:"Capture answers",color:"#3ff5a5",spd:"4.4s",chips:[["gcp","Cloud Run"]],
+     subs:[{icon:"ti-list-check",title:"Session API",desc:"Serve questions, take answers.",stack:["Cloud Run","Redis"],sync:"Flushes to SQL on completion."}]},
+    {name:"AI scoring",role:"Gemini personalization",color:"#8b7bff",spd:"4s",chips:[["ai","Gemini API"]],
+     subs:[{icon:"ti-brain",title:"Scoring",desc:"Answers → profile JSON.",stack:["Gemini API"],sync:"Structured output validated to schema."}]},
+    {name:"Lead store",role:"Results + contacts",color:"#27e6ff",spd:"5.2s",chips:[["gcp","Cloud SQL (PostgreSQL)"]],
+     subs:[{icon:"ti-database",title:"Postgres",desc:"quiz_results + contacts.",stack:["Cloud SQL"],sync:"FK quiz_results→contacts."}]},
+    {name:"CRM sync",role:"Push leads out",color:"#ff5cc8",spd:"4.6s",chips:[["gcp","Cloud Run"]],
+     subs:[{icon:"ti-users",title:"Contact sync",desc:"Upsert lead to CRM.",stack:["Cloud Run"],sync:"Dedupe on email; attach score."}]},
+    {name:"Monitoring",role:"Funnel + alerts",color:"#ff5d6c",spd:"5s",chips:[["gcp","Cloud Monitoring"]],
+     subs:[{icon:"ti-activity",title:"Funnel",desc:"Completion + drop-off.",stack:["Cloud Monitoring"],sync:"Alert on scoring error rate."}]},
+  ],
+};
+document.querySelectorAll('#tplRow .tpl').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const t=b.dataset.tpl;
+    if(t==='clear'){custom=[];}
+    else{custom=JSON.parse(JSON.stringify(TPL[t]));}
+    renderBuildList();
+  });
+});
+
+renderBuildList();
+document.getElementById('ts').textContent='Template generated '+new Date().toLocaleString();
+</script>
+</body>
+</html>
